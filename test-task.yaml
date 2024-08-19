@@ -2,28 +2,33 @@ apiVersion: apps/v1
 kind: Deployment
 
 metadata:
-  name: k8s-deployment
+  name: test-deploy
   labels:
-    app: k8s-deployment
+    app: test-cluster
 
 spec:
-  # 4 реплики под назначенную нагрузку
+  # 2 желаемых реплики под примерную среднюю нагрузку, с
+  # добавлением еще 2 нодов ниже, с помощью maxSurge
+  # у убавлением одного, с помощью maxUnavailable
   # https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
-  replicas: 4
+  replicas: 1
   selector:
     matchLabels:
-      app: k8s-deployment
+      app: test-cluster
 
   template:
     metadata:
       labels:
-        app: k8s-deployment
+        app: test-cluster
 
     # имя и образ шаблонного контейнера
+    # который симулирует 10 секунд инициализации
     spec:
       containers:
-        - name: some-container
-          image: some-image
+        - name: busybox
+          image: busybox:latest
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-c", "sleep 1s && echo 'healthy' > /tmp/healthy"]
 
           # ограничения на использование ресурсов
           # https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
@@ -40,25 +45,30 @@ spec:
           # пример проверки инициализации с учетом начального ожидания
           # https://kubernetes.io/docs/concepts/configuration/liveness-readiness-startup-probes/
           # https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
-          livenessProbe:
-            initialDelaySeconds: 12
-            periodSeconds: 5
-            exec:
-              command:
-              - cat
-              - /tmp/healthy
+          # livenessProbe:
+          #   initialDelaySeconds: 2
+          #   periodSeconds: 5
+          #   exec:
+          #     command: ["cat", "/tmp/healthy"]
 
-      # распределение по зонам "zone-1-3" с помощью affinity
-      # https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-              - matchExpressions:
-                  - key: topology.kubernetes.io/zone
-                    operator: In
-                    values:
-                      - zone-1
-                      # - zone-2
-                      # - zone-3
-
+    #   # распределение по зонам "zone-1-3" с помощью affinity
+    #   # https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+    #   affinity:
+    #     nodeAffinity:
+    #       requiredDuringSchedulingIgnoredDuringExecution:
+    #         nodeSelectorTerms:
+    #           - matchExpressions:
+    #               - key: topology.kubernetes.io/zone
+    #                 operator: In
+    #                 values:
+    #                   - zone-1
+    #                   # - zone-2
+    #                   # - zone-3
+    #
+    # # Дополнительные ноды на периоы пика
+    # # https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#max-surge
+    # strategy:
+    #   type: RollingUpdate
+    #   rollingUpdate:
+    #     maxSurge: 50%
+    #     maxUnavailable: 50%
