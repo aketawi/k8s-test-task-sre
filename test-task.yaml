@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: k8s-deployment
+  labels:
+    app: k8s-deployment
+
+spec:
+  # 4 реплики под назначенную нагрузку
+  # https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
+  replicas: 4
+  selector:
+    matchLabels:
+      app: k8s-deployment
+
+  template:
+    metadata:
+      labels:
+        app: k8s-deployment
+
+    # имя и образ шаблонного контейнера
+    spec:
+      containers:
+        - name: some-container
+          image: some-image
+
+          # ограничения на использование ресурсов
+          # https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+          resources:
+            requests:
+              cpu: 100m # основной запрос на 0.1 CPU
+              memory: 128Mi
+            limits:
+              # максимальное ограничение для пиковых периодов,
+              # требуется больше тестирования чтобы найти оптимальный минимальный лимит
+              cpu: 1500m
+              memory: 140Mi # ограничение к 128 МБ, с некоторым разрешением
+
+          # пример проверки инициализации с учетом начального ожидания
+          # https://kubernetes.io/docs/concepts/configuration/liveness-readiness-startup-probes/
+          # https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+          livenessProbe:
+            initialDelaySeconds: 12
+            periodSeconds: 5
+            exec:
+              command:
+              - cat
+              - /tmp/healthy
+
+      # распределение по зонам "zone-1-3" с помощью affinity
+      # https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: topology.kubernetes.io/zone
+                    operator: In
+                    values:
+                      - zone-1
+                      # - zone-2
+                      # - zone-3
+
