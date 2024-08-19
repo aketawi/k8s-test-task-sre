@@ -1,11 +1,12 @@
 #!/bin/env bash
 set -euo pipefail
 
-# Поднимает 3 примерных нода и затем запускает кластер.
+# Поднимает 5 примерных нодов с помощью `kind` и затем запускает deployment
 # ./deploy.sh -d -- удалить ноды и кластер
 
-# kubectl="kubectl"
-kubectl="minikube kubectl --"  # так как я использую minikube
+# dependencies: kind, kubectl, docker,
+
+KUBECTL="kubectl --context kind-kind"
 
 # check flags
 while getopts "d" option; do
@@ -15,19 +16,14 @@ while getopts "d" option; do
   esac
 done
 
+# bring down
 if [[ -n ${DELETE_DEPLOYMENT:+x} ]]; then
-  for f in ./node-*.yaml; do
-    $kubectl delete -f $f || true  # ignore failure
-  done
-  $kubectl delete -f ./test-task.yaml || true
-
+  $KUBECTL delete -f ./test-task.yaml || true
+  kind delete cluster
   exit 0
 fi
 
-# create nodes
-for f in ./node-*.yaml; do
-  $kubectl create -f $f;
-done
-
-# apply deployment
-$kubectl apply -f ./test-task.yaml
+# bring up
+kind create cluster --config ./kind_cluster.yaml || true
+$KUBECTL apply -f ./test-task.yaml
+$KUBECTL rollout status deployment

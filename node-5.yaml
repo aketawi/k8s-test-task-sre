@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: Node
-
-metadata:
-  name: "node-5"
-  labels:
-    name: "node-5"
-    topology.kubernetes.io/region: "region-1"
-    topology.kubernetes.io/zone: "zone-2"
